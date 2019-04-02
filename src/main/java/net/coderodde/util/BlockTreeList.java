@@ -133,9 +133,7 @@ public class BlockTreeList<E> implements List<E>,
          * @param element the element to append.
          */
         void append(E element) {
-            array[headIndex + size == array.length ? 0 : headIndex + size] = 
-                    element;
-            size++;
+            array[convertLogicalIndexToPhysicalIndex(size++)] = element;
         }
         
         /**
@@ -144,13 +142,9 @@ public class BlockTreeList<E> implements List<E>,
          * @param element the element to prepend.
          */
         void prepend(E element) {
-            if (headIndex == 0) {
-                headIndex = array.length - 1;
-            } else {
-                headIndex--;
-            }
-            
-            array[headIndex] = element;
+            array[headIndex = (headIndex == 0 ?
+                  array.length - 1:
+                  headIndex - 1)] = element;
             size++;
         }
         
@@ -351,18 +345,20 @@ public class BlockTreeList<E> implements List<E>,
             TreeListBlockNode<E> newNode = 
                     new TreeListBlockNode<>(blockNodeCapacity);
             
-            newNode.prepend(e);
+            newNode.append(e);
             newNode.parent = head;
             head.left = newNode;
             head.prev = newNode;
             newNode.next = head;
             head = newNode;
             blocks++;
+            
             // Now restore the AVL-tree invariants:
             updateLeftCounts(newNode, 1);
             fixAfterInsertion(newNode);
         } else {
             head.prepend(e);
+            updateLeftCounts(head, 1);
         }
         
         size++;
@@ -602,13 +598,13 @@ public class BlockTreeList<E> implements List<E>,
         TreeListBlockNode<E> node = root;
         
         while (true) {
-            if (index < node.leftCount) {
-                node = node.left;
-            } else if (index >= node.leftCount + node.size) {
-                index -= (node.leftCount + node.size);
+            if (index >= node.leftCount + node.size) {
+                index -= node.leftCount + node.size;
                 node = node.right;
+            } else if (index < node.leftCount) {
+                node = node.left;
             } else {
-                return node.get(index);
+                return node.get(index - node.leftCount);
             }
         }
     }
@@ -619,13 +615,13 @@ public class BlockTreeList<E> implements List<E>,
         TreeListBlockNode<E> node = root;
         
         while (true) {
-            if (index < node.leftCount) {
-                node = node.left;
-            } else if (index >= node.leftCount + node.size) {
-                index -= (node.leftCount + node.size);
+            if (index >= node.leftCount + node.size) {
+                index -= node.leftCount + node.size;
                 node = node.right;
+            } else if (index < node.leftCount) {
+                node = node.left;
             } else {
-                return node.set(index, element);
+                return node.set(index - node.leftCount, element);
             }
         }
     }
